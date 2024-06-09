@@ -5,7 +5,7 @@
 
 // Package ristretto255 implements the group of prime order
 //
-//     2**252 + 27742317777372353535851937790883648493
+//	2**252 + 27742317777372353535851937790883648493
 //
 // as specified in draft-hdevalence-cfrg-ristretto-01.
 //
@@ -71,7 +71,7 @@ var (
 
 // Element is an element of the ristretto255 prime-order group.
 type Element struct {
-	r edwards25519.Point
+	R edwards25519.Point
 }
 
 // NewElement returns a new Element set to the identity value.
@@ -84,14 +84,14 @@ func NewElement() *Element {
 // NewIdentityElement returns a new Element set to the identity value.
 func NewIdentityElement() *Element {
 	e := &Element{}
-	e.r.Set(edwards25519.NewIdentityPoint())
+	e.R.Set(edwards25519.NewIdentityPoint())
 	return e
 }
 
 // NewGeneratorElement returns a new Element set to the canonical generator.
 func NewGeneratorElement() *Element {
 	e := &Element{}
-	e.r.Set(edwards25519.NewGeneratorPoint())
+	e.R.Set(edwards25519.NewGeneratorPoint())
 	return e
 }
 
@@ -105,8 +105,8 @@ func (e *Element) Set(x *Element) *Element {
 //
 // Note that Elements must not be compared in any other way.
 func (e *Element) Equal(ee *Element) int {
-	X1, Y1, _, _ := e.r.ExtendedCoordinates()
-	X2, Y2, _, _ := ee.r.ExtendedCoordinates()
+	X1, Y1, _, _ := e.R.ExtendedCoordinates()
+	X2, Y2, _, _ := ee.R.ExtendedCoordinates()
 
 	var f0, f1 field.Element
 
@@ -146,22 +146,22 @@ func (e *Element) SetUniformBytes(b []byte) (*Element, error) {
 
 	f.SetBytes(b[:32])
 	point1 := &Element{}
-	mapToPoint(&point1.r, f)
+	mapToPoint(&point1.R, f)
 
 	f.SetBytes(b[32:])
 	point2 := &Element{}
-	mapToPoint(&point2.r, f)
+	mapToPoint(&point2.R, f)
 
 	return e.Add(point1, point2), nil
 }
 
 // mapToPoint implements MAP from Section 3.2.4 of draft-hdevalence-cfrg-ristretto-00.
 func mapToPoint(out *edwards25519.Point, t *field.Element) {
-	// r = SQRT_M1 * t^2
+	// R = SQRT_M1 * t^2
 	r := &field.Element{}
 	r.Multiply(sqrtM1, r.Square(t))
 
-	// u = (r + 1) * ONE_MINUS_D_SQ
+	// u = (R + 1) * ONE_MINUS_D_SQ
 	u := &field.Element{}
 	u.Multiply(u.Add(r, one), oneMinusDSQ)
 
@@ -169,7 +169,7 @@ func mapToPoint(out *edwards25519.Point, t *field.Element) {
 	c := &field.Element{}
 	c.Set(minusOne)
 
-	// v = (c - r*D) * (r + D)
+	// v = (c - R*D) * (r + D)
 	rPlusD := &field.Element{}
 	rPlusD.Add(r, d)
 	v := &field.Element{}
@@ -185,7 +185,7 @@ func mapToPoint(out *edwards25519.Point, t *field.Element) {
 
 	// s = CT_SELECT(s IF was_square ELSE s_prime)
 	s.Select(s, sPrime, wasSquare)
-	// c = CT_SELECT(c IF was_square ELSE r)
+	// c = CT_SELECT(c IF was_square ELSE R)
 	c.Select(c, r, wasSquare)
 
 	// N = c * (r - 1) * D_MINUS_ONE_SQ - v
@@ -253,7 +253,7 @@ func (e *Element) Bytes() []byte {
 }
 
 func (e *Element) bytes(b []byte) []byte {
-	X, Y, Z, T := e.r.ExtendedCoordinates()
+	X, Y, Z, T := e.R.ExtendedCoordinates()
 	tmp := &field.Element{}
 
 	// u1 = (z0 + y0) * (z0 - y0)
@@ -391,7 +391,7 @@ func (e *Element) SetCanonicalBytes(in []byte) (*Element, error) {
 	}
 
 	// Otherwise, return the internal representation in extended coordinates (x, y, 1, t).
-	if _, err := e.r.SetExtendedCoordinates(&X, &Y, &Z, &T); err != nil {
+	if _, err := e.R.SetExtendedCoordinates(&X, &Y, &Z, &T); err != nil {
 		panic("ristretto255: internal error: DECODE generated invalid coordinates")
 	}
 	return e, nil
@@ -399,13 +399,13 @@ func (e *Element) SetCanonicalBytes(in []byte) (*Element, error) {
 
 // ScalarBaseMult sets e = s * B, where B is the canonical generator, and returns e.
 func (e *Element) ScalarBaseMult(s *Scalar) *Element {
-	e.r.ScalarBaseMult(&s.s)
+	e.R.ScalarBaseMult(&s.s)
 	return e
 }
 
 // ScalarMult sets e = s * p, and returns e.
 func (e *Element) ScalarMult(s *Scalar, p *Element) *Element {
-	e.r.ScalarMult(&s.s, &p.r)
+	e.R.ScalarMult(&s.s, &p.R)
 	return e
 }
 
@@ -419,10 +419,10 @@ func (e *Element) MultiScalarMult(s []*Scalar, p []*Element) *Element {
 	points := make([]*edwards25519.Point, len(p))
 	scalars := make([]*edwards25519.Scalar, len(s))
 	for i := range s {
-		points[i] = &p[i].r
+		points[i] = &p[i].R
 		scalars[i] = &s[i].s
 	}
-	e.r.MultiScalarMult(scalars, points)
+	e.R.MultiScalarMult(scalars, points)
 	return e
 }
 
@@ -436,10 +436,10 @@ func (e *Element) VarTimeMultiScalarMult(s []*Scalar, p []*Element) *Element {
 	points := make([]*edwards25519.Point, len(p))
 	scalars := make([]*edwards25519.Scalar, len(s))
 	for i := range s {
-		points[i] = &p[i].r
+		points[i] = &p[i].R
 		scalars[i] = &s[i].s
 	}
-	e.r.VarTimeMultiScalarMult(scalars, points)
+	e.R.VarTimeMultiScalarMult(scalars, points)
 	return e
 }
 
@@ -448,25 +448,25 @@ func (e *Element) VarTimeMultiScalarMult(s []*Scalar, p []*Element) *Element {
 //
 // Execution time depends on the inputs.
 func (e *Element) VarTimeDoubleScalarBaseMult(a *Scalar, A *Element, b *Scalar) *Element {
-	e.r.VarTimeDoubleScalarBaseMult(&a.s, &A.r, &b.s)
+	e.R.VarTimeDoubleScalarBaseMult(&a.s, &A.R, &b.s)
 	return e
 }
 
 // Add sets e = p + q, and returns e.
 func (e *Element) Add(p, q *Element) *Element {
-	e.r.Add(&p.r, &q.r)
+	e.R.Add(&p.R, &q.R)
 	return e
 }
 
 // Subtract sets e = p - q, and returns e.
 func (e *Element) Subtract(p, q *Element) *Element {
-	e.r.Subtract(&p.r, &q.r)
+	e.R.Subtract(&p.R, &q.R)
 	return e
 }
 
 // Negate sets e = -p, and returns e.
 func (e *Element) Negate(p *Element) *Element {
-	e.r.Negate(&p.r)
+	e.R.Negate(&p.R)
 	return e
 }
 
